@@ -43,35 +43,35 @@ subroutine output(nh,ni,ne,zd,nnh,ndust)
   character(LEN = 5) :: nchar
   character(len=80)  :: path, makedirectory,format_out
 
-  path='output_'
   format_out=trim("unformatted")
   ilun=20
-  call title(1,nchar)
-  makedirectory = 'mkdir ' // trim(path) // trim(nchar)
+  !call title(1,nchar)
+  path='ion_files'
+  makedirectory = 'mkdir ' //  trim(path)
   call system(makedirectory)
 
-  open(ilun,file=trim(path) // trim(nchar)//trim('/info.dat'))
+  open(ilun,file=trim(path) //trim('/info.dat'))
   write(ilun,'("nnh        =",I11)')nnh
   write(ilun,'("ndust        =",I11)')NDUST
 
 
-   open(ilun,file=trim(path) // trim(nchar)//trim('/nh'), form=format_out,access='stream')
+   open(ilun,file=trim(path) //trim('/nh'), form=format_out,access='stream')
    do inh = 1,nnh
       write(ilun) nh(inh)
    end do
    close(ilun)   
-   open(ilun,file=trim(path) // trim(nchar)//trim('/ni'), form=format_out,access='stream')
+   open(ilun,file=trim(path) //trim('/ni'), form=format_out,access='stream')
    do inh = 1,nnh
       write(ilun) ni(inh)
    end do
    close(ilun)
-   open(ilun,file=trim(path) // trim(nchar)//trim('/ne'), form=format_out,access='stream')
+   open(ilun,file=trim(path) //trim('/ne'), form=format_out,access='stream')
    do inh = 1,nnh
       write(ilun) ne(inh)
    end do
    close(ilun)
 
-   open(ilun,file=trim(path) // trim(nchar)//trim('/zd'), form=format_out,access='stream')
+   open(ilun,file=trim(path) //trim('/zd'), form=format_out,access='stream')
    do idust=1,ndust
       do inh = 1,nnh
           write(ilun) zd(inh,idust)
