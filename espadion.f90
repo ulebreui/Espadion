@@ -9,6 +9,10 @@ program espadion
   ! meant as an example to learn how to use the modules of the code
   ! It can also be use for exploration.
   !================================================================
+  character(len=70):: nmlfile,infile
+  integer :: io_n
+  logical::nml_ok
+
   real(dp) :: barotrop
 
   real(dp) :: B_vs_rho
@@ -80,9 +84,30 @@ program espadion
   real(dp), dimension(:,:), allocatable      :: Sigma_js
 
 
+   namelist/params/mu_ions,stickeff_el,zeta_ionis,epsilon_ionis,nitermax_ionis&
+   &,psi0,epsone,nHmin,nHmax,nnh,temp,mu_gas,B_0,rhograin,smin,smax,ice_mantle,dust2gas,mrn,ndust
 
-  print *, "Entering Espadion, let's get ionised !"
+   print *, "Entering Espadion, let's get ionised !"
+   print *, "########################################################################################################################################"
+   print *, "########################################################################################################################################"
+   CALL getarg(1,infile)
+   nmlfile=TRIM(infile)
+   INQUIRE(file=infile,exist=nml_ok)
 
+   if(.not. nml_ok)then
+      write(*,*)'File '//TRIM(infile)//' does not exist'
+      stop
+   end if
+   print *, "Namelist reading : ", nmlfile
+   
+   open(13,file=nmlfile)
+   print *, "Namelist reading  !"
+   read(13,params,IOSTAT=io_n)
+   rewind(13)
+   if (io_n/=0) then
+      write(*,*) 'Invalid line in the namelist'
+      stop
+   end if
 
   ! Initialisation of the gas properties
   allocate(nH(1:nnH))

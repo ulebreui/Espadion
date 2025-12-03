@@ -1,0 +1,22 @@
+&PARAMS
+mu_ions        = 25.0d0    ! Mean ion mass (in units of mh)
+stickeff_el    = 0.5d0     ! Sticking coefficient of electrions
+zeta_ionis     = 5d-17     ! CR Ionisation rate
+epsilon_ionis  = 1d-6      ! Tolerance of the ionisation scheme
+nitermax_ionis = 1000      ! Maximum number of iterations
+psi0          = -2.5d0     ! Initial guess for psi
+epsone        = 0.99999d0  ! Maximal electron fraction /!\ 1 is a singularity
+nHmin     = 1e4            ! Min density
+nHmax     = 1e12           ! Max density
+nnH       = 100            ! Number of density bins
+Temp      = 10.0d0         ! 10 Kelvin
+mu_gas    = 2.31d0         ! Mean molecular weight
+B_0       = 3d-5           ! Value of the B field at 10^4
+rhograin   = 2.3d0         ! Grain intrinsic density in g/cm3
+smin       = 5d-7          ! Grain min size in cm
+smax       = 250d-7        ! Grain max size in cm
+ice_mantle = 8.7d-7        ! Ice mantle size -> it changes the grain size but not its mass 
+dust2gas   = 0.01d0        ! Dust-to-gas ratio
+mrn        = -3.5d0        ! MRN dust distribution power law
+ndust      = 10            ! Number of dust sizes
+/
