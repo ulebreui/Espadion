@@ -168,4 +168,94 @@ end subroutine compute_charges
 
 
 
+double precision function tau_i(nH,T,mu_ions)
+   use ionisation_commons
+   implicit none
+
+   real(dp) :: ni,nH,T,mu_ions
+   real(dp) :: mu_i,vrms_i,sigmav_ions,as_He_ions
+   
+   as_He_ions  = 1.14
+   mu_i        = 2.0d0*mH*mu_ions*mH/(2.0d0*mH+mu_ions*mH) ! This is taken from Guillet et al.
+   vrms_i      = sqrt(8.0d0*kB*T/(pi*mu_i))*1d-5  ! /!\ /!\ These velocities need to be in km/s for the Pinto & Galli 2008 fit
+   sigmav_ions = 2.4d-9  *vrms_i**0.6
+   tau_i       = 1.0d0/as_He_ions*((mu_ions*mH+2.0d0*mH)/(2.0d0*mH))/sigmav_ions/nH
+   !sigma_ion   = ni*e_el_stat**2*tau_i/(mu_ions*mH)
+end function tau_i
+
+double precision function tau_el(nH,T)
+   use ionisation_commons
+   implicit none
+
+   real(dp) :: ne,nH,T
+   real(dp) :: mu_el,vrms_el,sigmav_el,as_He_el
+   
+   as_He_el     = 1.16
+   mu_el        = 2.0d0*mH*m_el/(m_el+2.0d0*mH) ! This is taken from Guillet et al.
+   vrms_el      = sqrt(8.0d0*kB*T/(pi*mu_el))*1d-5! /!\ /!\ These velocities need to be in km/s for the Pinto & Galli 2008 fit
+   sigmav_el    = 3.16d-11*vrms_el**1.3
+   tau_el       = 1.0d0/as_He_el*((m_el+2.0d0*mH)/(2.0d0*mH))/sigmav_el/nH
+   !sigma_el     = ne*e_el_stat**2.*tau_el/m_el
+
+end function tau_el
+
+double precision function tau_d(n_dust,adust,rhograin,nH,T,m_gas)
+   use ionisation_commons
+   implicit none
+
+   real(dp) :: nH,T,rhograin
+   real(dp) :: m_gas ! mu mH
+   real(dp) :: n_dust, adust, t_stop,zd
+  
+   tau_d     = rhograin*adust/(nH*m_gas*sqrt(8.0d0*kB*T/m_gas/pi)) ! /!\ This is different from Guillet. We take the stopping time for consistency with the dust dynamics
+   !sigma_dust = n_dust*(zd*e_el_stat)**2.*t_stop/mdust
+
+end function tau_d
+
+
+double precision function sigma_j(np,zp,taup,mp)
+   use ionisation_commons
+   implicit none
+
+   real(dp) :: np,zp,taup,mp
+  
+   sigma_j = np*(zp*e_el_stat)**2.*taup/mp
+
+end function sigma_j
+
+double precision function Omega_j_over_B(mass_part,charge)
+   use ionisation_commons
+   implicit none
+
+   real(dp) :: n
+   real(dp) :: charge    ! In units of e in stat C
+   real(dp) :: mass_part ! Mass of the particle in gram
+   
+   Omega_j_over_B  = charge*e_el_stat/clight/mass_part
+end function Omega_j_over_B
+
+double precision function SigmaP(sigmaj,omegaj_B,tauj,B_gauss)
+   use ionisation_commons
+   implicit none
+
+   real(dp) :: sigmaj,omegaj_B,tauj
+   real(dp) :: B_gauss
+
+   SigmaP = sigmaj/(1.0d0+(omegaj_B*B_gauss*tauj)**2.0)
+
+end function SigmaP
+
+
+double precision function SigmaH(sigmaj,omegaj_B,tauj,B_gauss)
+   use ionisation_commons
+   implicit none
+
+   real(dp) :: sigmaj,omegaj_B,tauj
+   real(dp) :: B_gauss
+
+   SigmaH = -sigmaj*omegaj_B*B_gauss*tauj/(1.0d0+(omegaj_B*B_gauss*tauj)**2.0)
+
+end function SigmaH
+
+
 end module ionisation_functions

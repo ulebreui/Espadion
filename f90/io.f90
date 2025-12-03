@@ -33,13 +33,13 @@ end subroutine title
 
 
 ! Writes the simulation output. The routine is a bit ugly and will be rewritten soon
-subroutine output(nh,ni,ne,zd,nnh,ndust)
+subroutine output(nh,ni,ne,zd,tau_js,Sigma_js,Omega_js_B,sigma_o,sigma_p,sigma_h,eta_o,eta_H,eta_a,nnh,ndust)
   use ionisation_commons
   implicit none
   integer  :: inh,idust,nnh,ndust,ilun
-  real(dp), dimension(1:nnh) :: nh,ni,ne
-  real(dp), dimension(1:nnh,1:ndust) :: zd
-
+  real(dp), dimension(1:nnh) :: nh,ni,ne,sigma_o,sigma_p,sigma_h,eta_o,eta_H,eta_a
+  real(dp), dimension(1:nnh,1:ndust)   :: zd
+  real(dp), dimension(1:nnh,1:ndust+2) :: tau_js,Sigma_js,Omega_js_B
   character(LEN = 5) :: nchar
   character(len=80)  :: path, makedirectory,format_out
 
@@ -70,7 +70,6 @@ subroutine output(nh,ni,ne,zd,nnh,ndust)
       write(ilun) ne(inh)
    end do
    close(ilun)
-
    open(ilun,file=trim(path) //trim('/zd'), form=format_out,access='stream')
    do idust=1,ndust
       do inh = 1,nnh
@@ -79,4 +78,61 @@ subroutine output(nh,ni,ne,zd,nnh,ndust)
    end do
 
 
+   open(ilun,file=trim(path) //trim('/tau'), form=format_out,access='stream')
+   do idust=1,ndust+2
+      do inh = 1,nnh
+          write(ilun) tau_js(inh,idust)
+      end do
+   end do
+   open(ilun,file=trim(path) //trim('/sigma'), form=format_out,access='stream')
+   do idust=1,ndust+2
+      do inh = 1,nnh
+          write(ilun) Sigma_js(inh,idust)
+      end do
+   end do
+
+   open(ilun,file=trim(path) //trim('/omega_B'), form=format_out,access='stream')
+   do idust=1,ndust+2
+      ! All cells have the same valu
+      do inh = 1,nnh
+      write(ilun) Omega_js_B(inh,idust)
+      end do
+   end do
+
+
+   open(ilun,file=trim(path) //trim('/eta_o'), form=format_out,access='stream')
+   do inh = 1,nnh
+      write(ilun) eta_o(inh)
+   end do
+   close(ilun)
+
+   open(ilun,file=trim(path) //trim('/eta_h'), form=format_out,access='stream')
+   do inh = 1,nnh
+      write(ilun) eta_h(inh)
+   end do
+   close(ilun)
+
+   open(ilun,file=trim(path) //trim('/eta_a'), form=format_out,access='stream')
+   do inh = 1,nnh
+      write(ilun) eta_a(inh)
+   end do
+   close(ilun)
+
+   open(ilun,file=trim(path) //trim('/sigma_o'), form=format_out,access='stream')
+   do inh = 1,nnh
+      write(ilun) sigma_o(inh)
+   end do
+   close(ilun)
+
+   open(ilun,file=trim(path) //trim('/sigma_h'), form=format_out,access='stream')
+   do inh = 1,nnh
+      write(ilun) sigma_h(inh)
+   end do
+   close(ilun)
+
+   open(ilun,file=trim(path) //trim('/sigma_p'), form=format_out,access='stream')
+   do inh = 1,nnh
+      write(ilun) sigma_p(inh)
+   end do
+   close(ilun)
  end subroutine output

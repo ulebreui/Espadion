@@ -9,7 +9,9 @@ program espadion
   ! meant as an example to learn how to use the modules of the code
   ! It can also be use for exploration.
   !================================================================
+  real(dp) :: barotrop
 
+  real(dp) :: B_vs_rho
 
   ! General parameters linked to ionisation and variables
 
@@ -33,15 +35,19 @@ program espadion
   ! Gas related parameters and variables
 
   real(dp) :: nHmin     = 1e4    ! Min density
-  real(dp) :: nHmax     = 1e15   ! Max density
+  real(dp) :: nHmax     = 1e12   ! Max density
   integer  :: nnH       = 100    ! Number of density bins
   real(dp) :: Temp      = 10.0d0 ! 10 Kelvin
   real(dp) :: mu_gas    = 2.31d0
+  real(dp) :: B_0       = 3d-5   ! Value of the B field at 10^4
+
   integer  :: inH
   real(dp) :: zeta_nh
 
   real(dp), dimension(:), allocatable      :: nH  ! Gas number density
   real(dp), dimension(:), allocatable      :: rho ! Gas density
+
+  real(dp), dimension(:), allocatable      :: B_field  ! Magnetic field
 
   ! Dust related parameters and variables
   real(dp) :: rhograin   = 2.3d0         ! Grain intrinsic density in g/cm3
@@ -69,7 +75,10 @@ program espadion
   real(dp), dimension(:), allocatable      :: sigma_p
   real(dp), dimension(:), allocatable      :: sigma_h
 
- 
+  real(dp), dimension(:,:), allocatable      :: tau_js
+  real(dp), dimension(:,:), allocatable      :: Omega_js_B
+  real(dp), dimension(:,:), allocatable      :: Sigma_js
+
 
 
   print *, "Entering Espadion, let's get ionised !"
@@ -98,6 +107,19 @@ program espadion
   allocate(ne(1:nnH))
   allocate(Zd(1:nnH,1:ndust))
 
+  allocate(tau_js(1:nnH,1:ndust+2))
+  allocate(Omega_js_B(1:nnH,1:ndust+2))
+  allocate(Sigma_js(1:nnH,1:ndust+2))
+
+  allocate(sigma_o(1:nnH))
+  allocate(sigma_p(1:nnH))
+  allocate(sigma_h(1:nnH))
+
+  allocate(eta_o(1:nnH))
+  allocate(eta_h(1:nnH))
+  allocate(eta_a(1:nnH))
+
+
   zeta_d = (smax/smin)**(1.0d0/ndust)
   eta_d  = zeta_d**3.
   m_min = 4./3.*pi*rhograin*smin**3.
@@ -110,9 +132,11 @@ program espadion
     mplus(idust)  = m_min * eta_d  ** (idust)
 
     ! Bin centers
-    adust (idust) = sqrt(aminus(idust)   * aplus(idust))
-    mdust (idust) = 4./3. *pi *rhograin  * adust(idust)**3
+    adust (idust)  = sqrt(aminus(idust)   * aplus(idust))
+    mdust (idust)  = 4./3. *pi *rhograin  * adust(idust)**3
+    adust (idust) =  adust (idust) + ice_mantle
   enddo
+
 
   ! Initialise the MRN distribution
   do inH=1,nnH
@@ -126,16 +150,80 @@ program espadion
   ! First guess for psi. To put in initial conditions. PSI0 should be a global variable
   call init_PSI(psi0,mu_ions,stickeff_el,epsone,epsilon_ionis)
 
-  ! Actual charge computation
+  ! Actual charge/resistivity computation
   do inH=1,nnH
-    call compute_charges(ni(inH),ne(inH),zd(inH,:),nH(inh), n_dust(inh,:), Temp, adust, zeta_ionis, mu_ions,stickeff_el, psi0, psi_new, ndust,epsone,nitermax_ionis,epsilon_ionis)
+    call compute_charges(ni(inH),ne(inH),zd(inH,:),nH(inh), n_dust(inh,:), barotrop(Temp,nH(inh)), adust, zeta_ionis, mu_ions,stickeff_el, psi0, psi_new, ndust,epsone,nitermax_ionis,epsilon_ionis)
     psi0 = psi_new !change the guess to something as close as possible from the solution ! In ramses take the old value for e.g. or maybe we tabulate it ?
+    
+    ! Now we compute the quantities needed for the resistivities
+
+    ! For the dust
+    do idust =1,ndust
+      tau_js(inH,idust)     =  tau_d(n_dust(inh,idust),adust(idust),rhograin,nH(inH),barotrop(Temp,nH(inh)),mu_gas*mH)
+      Sigma_js(inH,idust)   =  sigma_j(n_dust(inh,idust),zd(inh,idust),tau_js(inH,idust) ,mdust(idust))
+      Omega_js_B(inh,idust) =  Omega_j_over_B(mdust(idust),zd(inh,idust))
+    end do
+
+    ! Now the ions
+    tau_js(inH,ndust+1)     = tau_i(nH(inh),barotrop(Temp,nH(inh)),mu_ions)
+    Sigma_js(inH,ndust+1)   = sigma_j(ni(inh),1.0d0,tau_js(inH,ndust+1),mu_ions*mH)
+    Omega_js_B(inh,ndust+1) =  Omega_j_over_B(mu_ions*mH,1.0d0)
+
+
+    ! Now the electron
+    tau_js(inH,ndust+2)     = tau_el(nH(inh),barotrop(Temp,nH(inh)))
+    Sigma_js(inH,ndust+2)   = sigma_j(ne(inh),-1.0d0,tau_js(inH,ndust+2),m_el)
+    Omega_js_B(inh,ndust+2) = Omega_j_over_B(m_el,-1.0d0)
+
+
+    sigma_o(inH) = 0.0d0
+    sigma_P(inH) = 0.0d0
+    sigma_H(inH) = 0.0d0
+
+    do idust =1,ndust+2
+      sigma_o(inH) = sigma_o(inH) + Sigma_js(inH,idust)
+      sigma_P(inH) = sigma_P(inH) + SigmaP(Sigma_js(inH,idust),Omega_js_B(inh,idust),tau_js(inH,idust),B_vs_rho(B_0,nh(inh)))
+      sigma_H(inH) = sigma_H(inH) + SigmaH(Sigma_js(inH,idust),Omega_js_B(inh,idust),tau_js(inH,idust),B_vs_rho(B_0,nh(inh)))
+    end do
+
+    eta_o(inH)=1.0d0/sigma_o(inH)
+    eta_H(inH)=sigma_H(inH)/(sigma_p(inH)*2.+sigma_h(inH)**2.)
+    eta_a(inH)=sigma_p(inH)/(sigma_p(inH)**2.+sigma_H(inH)**2.)-1.0d0/sigma_o(inH)
+
   end do
 
-  call output(nh,ni,ne,zd,nnh,ndust)
+
+  call output(nh,ni,ne,zd,tau_js,Sigma_js,Omega_js_B,sigma_o,sigma_p,sigma_h,eta_o,eta_H,eta_a,nnh,ndust)
 
 
 end program espadion
+
+double precision function barotrop(Temp,nH)
+   use ionisation_commons
+   implicit none
+
+   real(dp) :: nH,n_star,n1,n2,n3 , n_star2,gammaloc,gamma2,temp
+   gammaloc= 5./3.
+   gamma2=7./5.
+   n_star = 1e10
+   n_star2=30.*n_star
+
+   barotrop = Temp * ( 1.0d0 + (nH/n_star)**(gammaloc-1.0d0) / (1.+(nH/n_star2)**(gammaloc-gamma2)) )
+
+end function barotrop
+
+double precision function B_vs_rho(B0,nH)
+   use ionisation_commons
+   implicit none
+
+   real(dp) :: nH,B0
+
+   B_vs_rho = B0*sqrt(nH/1d4)! Magnetic field
+
+end function B_vs_rho
+
+
+
 
 
 !   as_He_dust = 1.28
